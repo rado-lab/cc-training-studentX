@@ -6,7 +6,15 @@ on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
-
+    inputs:
+      action:
+        description: "apply albo destroy"
+        required: true
+        default: "apply"
+        type: choice
+        options:
+          - apply
+          - destroy
 permissions:
   id-token: write   # potrzebne do OIDC
   contents: read
@@ -50,12 +58,19 @@ jobs:
         run: terraform validate
         working-directory: .
 
-      - name: Terraform Plan
+      - name: Terraform Plan (apply)
+        if: github.event_name != 'workflow_dispatch' || inputs.action == 'apply'
         run: terraform plan -out tfplan
         working-directory: .
 
-      # Apply tylko na push do main (nie na PR)
+      # Apply: na push do main + ręcznie (workflow_dispatch) gdy action=apply
       - name: Terraform Apply
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
         run: terraform apply -auto-approve tfplan
+        working-directory: .
+
+      # Destroy: tylko ręcznie (workflow_dispatch) gdy action=destroy
+      - name: Terraform Destroy
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
+        run: terraform destroy -auto-approve
         working-directory: .
