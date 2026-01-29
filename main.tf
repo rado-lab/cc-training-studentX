@@ -1,3 +1,9 @@
+data "azurerm_ssh_public_key" "existing" {
+  name                = var.ssh_key_name
+  resource_group_name = var.ssh_key_resource_group_name
+}
+
+
 resource "azurerm_resource_group" "rg" {
   name     = var.resource_group_name
   location = var.location
@@ -97,7 +103,7 @@ resource "azurerm_linux_virtual_machine" "vm_ubuntu" {
 
   admin_ssh_key {
     username   = var.admin_username
-    public_key = var.ssh_public_key
+    public_key = data.azurerm_ssh_public_key.existing.public_key
   }
 
   os_disk {
