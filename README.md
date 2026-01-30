@@ -8,7 +8,7 @@ Projekt **nie jest wzorcem produkcyjnym**.
 
 ---
 
-## 🧪 Zakres scenariusza demo1
+## 🧪 Zakres scenariusza demo
 
 Środowisko tworzy:
 
