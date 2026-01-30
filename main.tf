@@ -139,8 +139,8 @@ resource "azurerm_network_interface_security_group_association" "assoc_windows" 
 
 # ---------- Windows password ----------
 resource "random_password" "win_admin" {
-  length           = 20
-  special          = true
+  length  = 20
+  special = true
 }
 
 # ---------- Windows VM ----------
