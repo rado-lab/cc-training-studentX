@@ -15,12 +15,67 @@ on:
         options:
           - apply
           - destroy
+
 permissions:
-  id-token: write   # potrzebne do OIDC
+  id-token: write
   contents: read
 
+env:
+  CORTEX_API_URL: https://api-clico-cortex-cloud.xdr.pl.paloaltonetworks.com
+
 jobs:
+  cortex-code-scan:
+    runs-on: ubuntu-latest
+    environment: test-env
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify Node.js Version
+        run: node -v
+
+      - name: Download cortexcli
+        env:
+          CORTEX_API_KEY: ${{ secrets.CORTEX_API_KEY }}
+          CORTEX_API_KEY_ID: ${{ secrets.CORTEX_API_KEY_ID }}
+        run: |
+          set -euo pipefail
+          crtx_resp=$(curl -sS "${CORTEX_API_URL}/public_api/v1/unified-cli/releases/download-link?os=linux&architecture=amd64" \
+            -H "x-xdr-auth-id: ${CORTEX_API_KEY_ID}" \
+            -H "Authorization: ${CORTEX_API_KEY}")
+          crtx_url=$(echo "$crtx_resp" | jq -r ".signed_url")
+          curl -sSLo cortexcli "$crtx_url"
+          chmod +x cortexcli
+          ./cortexcli --version
+
+      - name: Run Cortex CLI Code Scan
+        env:
+          CORTEX_API_KEY: ${{ secrets.CORTEX_API_KEY }}
+          CORTEX_API_KEY_ID: ${{ secrets.CORTEX_API_KEY_ID }}
+        run: |
+          set -euo pipefail
+          ./cortexcli \
+            --api-base-url "${CORTEX_API_URL}" \
+            --api-key "${CORTEX_API_KEY}" \
+            --api-key-id "${CORTEX_API_KEY_ID}" \
+            code scan \
+            --directory "${GITHUB_WORKSPACE}" \
+            --repo-id "${GITHUB_REPOSITORY}" \
+            --branch "${GITHUB_REF_NAME}" \
+            --source "GITHUB_ACTIONS" \
+            --create-repo-if-missing
+
   terraform:
+    needs: cortex-code-scan
     runs-on: ubuntu-latest
     environment: test-env
 
@@ -40,7 +95,6 @@ jobs:
         with:
           terraform_version: 1.6.6
 
-      # Logowanie do Azure przez OIDC
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
@@ -49,10 +103,12 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Terraform Init
-        run: terraform init
+        run: terraform init -input=false
         working-directory: .
 
       - name: Terraform Format
+        # żeby destroy nie blokował się na fmt, jeśli ktoś popsuje format
+        if: github.event_name != 'workflow_dispatch' || inputs.action != 'destroy'
         run: terraform fmt -check
         working-directory: .
 
@@ -65,13 +121,11 @@ jobs:
         run: terraform plan -out tfplan
         working-directory: .
 
-      # Apply: na push do main + ręcznie (workflow_dispatch) gdy action=apply
       - name: Terraform Apply
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
         run: terraform apply -auto-approve tfplan
         working-directory: .
 
-      # Destroy: tylko ręcznie (workflow_dispatch) gdy action=destroy
       - name: Terraform Destroy
         if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
         run: terraform destroy -auto-approve
