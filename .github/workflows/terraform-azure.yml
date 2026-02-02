@@ -103,6 +103,7 @@ jobs:
         uses: bridgecrewio/yor-action@main
         with:
           directory: .
+          commit_changes: "false"
 #----
 
       - name: Setup Terraform
