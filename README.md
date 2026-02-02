@@ -4,7 +4,7 @@
 Ten projekt Terraform służy **wyłącznie do celów testowych i demonstracyjnych**.  
 Celem jest pokazanie **attack path** w środowisku Azure – od zasobów infrastrukturalnych (VM, sieć, potencjalnie Storage) aż do widoczności i korelacji w **Cortex Cloud**.
 
-Projekt **nie jest wzorcem produkcyjnym**.
+Projekt **nie jest wzorcem produkcyjnym**
 
 ---
 
