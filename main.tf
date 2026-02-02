@@ -17,7 +17,7 @@ resource "azurerm_subnet" "subnet" {
   address_prefixes     = ["10.10.1.0/24"]
 }
 
-# ---------- NSG Ubuntu ----------
+# ---------- NSG Ubuntu - ----------
 resource "azurerm_network_security_group" "nsg_ubuntu" {
   name                = "nsg-ubuntu"
   location            = var.location
