@@ -15,6 +15,11 @@ on:
         options:
           - apply
           - destroy
+#--
+concurrency:
+  group: terraform-azure-${{ github.ref }}
+  cancel-in-progress: true
+#--
 
 permissions:
   id-token: write
