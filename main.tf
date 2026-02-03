@@ -36,7 +36,7 @@ resource "azurerm_network_security_group" "nsg_ubuntu" {
   }
 }
 
-# ---------- NSG Windows ----------
+# ---------- NSG Windows -----------
 resource "azurerm_network_security_group" "nsg_windows" {
   name                = "nsg-windows"
   location            = var.location
