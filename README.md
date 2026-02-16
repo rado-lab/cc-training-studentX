@@ -6,7 +6,7 @@ Celem jest pokazanie **attack path** w środowisku Azure – od zasobów infrast
 
 Projekt **nie jest wzorcem produkcyjnym**.
 
----
+----
 
 ## 🧪 Zakres scenariusza demo
 
