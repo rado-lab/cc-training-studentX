@@ -28,7 +28,7 @@ Scenariusz demo zakłada możliwość:
 - poruszania się lateralnie w sieci prywatnej,
 - pokazania **attack path / blast radius** w Cortex Cloud.
 
----
+----
 
 ## ☁️ Cortex Cloud
 
