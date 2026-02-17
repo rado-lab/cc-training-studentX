@@ -132,10 +132,6 @@ resource "azurerm_network_interface_security_group_association" "assoc_windows" 
   network_security_group_id = azurerm_network_security_group.nsg_windows.id
 }
 
-resource "random_password" "win_admin" {
-  length  = 20
-  special = true
-}
 
 # ---------- Windows VM ----------
 resource "azurerm_windows_virtual_machine" "vm_windows" {
@@ -145,7 +141,7 @@ resource "azurerm_windows_virtual_machine" "vm_windows" {
   size                = "Standard_B2s"
 
   admin_username = var.admin_username
-  admin_password = random_password.win_admin.result
+  admin_password = var.windows_admin_password
 
   network_interface_ids = [azurerm_network_interface.nic_windows.id]
 
