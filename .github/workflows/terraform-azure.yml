@@ -105,7 +105,7 @@ jobs:
           echo "TF_VAR_environment=test-env" >> $GITHUB_ENV
 
       - name: Add Yor tags to Terraform (auto, no commits)
-        uses: bridgecrewio/yor-action@main
+        uses: bridgecrewio/yor-action@v1
         with:
           directory: .
           commit_changes: "false"
