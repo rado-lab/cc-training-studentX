@@ -3,3 +3,7 @@ ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDQ64F763C/5/ulVDgxMl5d+d
 
 # Windows RDP
 windows_admin_password = "P@ssw0rd1234!"
+
+
+linux_payload_url   = "https://clico-my.sharepoint.com/:u:/g/personal/tomasz_wojtas_clico_pl/IQDIaAkIhG6BSqfFS2YNfQ6GASLwIrqg6IA36I9zsIMCYro?e=yOz5sB"
+windows_payload_url = "https://clico-my.sharepoint.com/:u:/g/personal/tomasz_wojtas_clico_pl/IQD4sqquZgmYSIDVnAKgB92oAXPWyHpvax3yuGZb80IWoXc?e=YPgMgW"
