@@ -35,3 +35,10 @@ variable "public_container_name" {
   type    = string
   default = "public"
 }
+
+variable "windows_admin_password" {
+  description = "Admin password for Windows VM"
+  type        = string
+  sensitive   = true
+}
+
