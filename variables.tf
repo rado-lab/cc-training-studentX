@@ -42,13 +42,3 @@ variable "windows_admin_password" {
   sensitive   = true
 }
 
-variable "linux_payload_url" {
-  type        = string
-  description = "Direct download URL for Linux payload"
-}
-
-variable "windows_payload_url" {
-  type        = string
-  description = "Direct download URL for Windows payload"
-}
-
