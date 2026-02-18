@@ -36,6 +36,68 @@ resource "azurerm_network_security_group" "nsg_ubuntu" {
   }
 }
 
+#---instalacja agenta Cortex XDR---
+
+resource "azurerm_virtual_machine_extension" "cortex_linux" {
+  name                       = "cortex-xdr-linux"
+  virtual_machine_id         = azurerm_linux_virtual_machine.vm_ubuntu.id
+  publisher                  = "Microsoft.Azure.Extensions"
+  type                       = "CustomScript"
+  type_handler_version       = "2.1"
+  auto_upgrade_minor_version = true
+
+  settings = jsonencode({
+    commandToExecute = <<-BASH
+      bash -lc '
+        set -euo pipefail
+
+        URL="https://xdr-agents-tests.s3.eu-central-1.amazonaws.com/linux-0126_sh.tar.gz"
+        WORKDIR="/tmp/cortex-xdr"
+        mkdir -p "$WORKDIR"
+        cd "$WORKDIR"
+
+        echo "[*] Downloading Linux agent..."
+        curl -fsSL "$URL" -o agent.tar.gz
+
+        echo "[*] Extracting..."
+        tar xzf agent.tar.gz
+
+        echo "[*] Preparing config dir..."
+        sudo mkdir -p /etc/panw
+
+        # Skopiuj cortex.conf jeśli jest w paczce (wg docs)
+        if [ -f "$WORKDIR/cortex.conf" ]; then
+          sudo cp "$WORKDIR/cortex.conf" /etc/panw/cortex.conf
+        elif ls "$WORKDIR"/*/cortex.conf >/dev/null 2>&1; then
+          sudo cp "$WORKDIR"/*/cortex.conf /etc/panw/cortex.conf
+        fi
+
+        echo "[*] Locating installer..."
+        INSTALLER="$(find "$WORKDIR" -maxdepth 2 -type f -name "cortex-*.sh" | head -n 1)"
+        if [ -z "$INSTALLER" ]; then
+          echo "ERROR: Nie znalazłem cortex-*.sh w paczce."
+          find "$WORKDIR" -maxdepth 2 -type f -print
+          exit 1
+        fi
+
+        echo "[*] chmod +x installer..."
+        chmod +x "$INSTALLER"
+
+        echo "[*] Running installer (root)..."
+        sudo "$INSTALLER"
+
+        echo "[*] Done. (Optional) Status:"
+        if [ -x /opt/traps/bin/cytool ]; then
+          sudo /opt/traps/bin/cytool checkin || true
+          sudo /opt/traps/bin/cytool runtime query || true
+        fi
+      '
+    BASH
+  })
+}
+
+
+
 # ---------- NSG Windows -----------
 resource "azurerm_network_security_group" "nsg_windows" {
   name                = "nsg-windows"
@@ -113,6 +175,29 @@ resource "azurerm_linux_virtual_machine" "vm_ubuntu" {
     version   = "latest"
   }
 }
+
+#----instalacja agenta XDR 
+
+resource "azurerm_virtual_machine_extension" "cortex_windows" {
+  name                       = "cortex-xdr-windows"
+  virtual_machine_id         = azurerm_windows_virtual_machine.vm_windows.id
+  publisher                  = "Microsoft.Compute"
+  type                       = "CustomScriptExtension"
+  type_handler_version       = "1.10"
+  auto_upgrade_minor_version = true
+
+  settings = jsonencode({
+    commandToExecute = "powershell -ExecutionPolicy Bypass -NoProfile -Command \"\
+      $ErrorActionPreference='Stop'; \
+      $url='https://xdr-agents-tests.s3.eu-central-1.amazonaws.com/windows-0126_x64.msi'; \
+      $out='C:\\\\Windows\\\\Temp\\\\cortexxdr.msi'; \
+      Invoke-WebRequest -Uri $url -OutFile $out; \
+      Start-Process msiexec.exe -ArgumentList '/i', $out, '/qn', '/l*v', 'C:\\\\Windows\\\\Temp\\\\cortexxdr-install.log' -Wait; \
+    \""
+  })
+}
+
+
 
 # ---------- NIC Windows ----------
 resource "azurerm_network_interface" "nic_windows" {
