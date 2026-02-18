@@ -187,13 +187,22 @@ resource "azurerm_virtual_machine_extension" "cortex_windows" {
   auto_upgrade_minor_version = true
 
   settings = jsonencode({
-    commandToExecute = "powershell -ExecutionPolicy Bypass -NoProfile -Command \"\
-      $ErrorActionPreference='Stop'; \
-      $url='https://xdr-agents-tests.s3.eu-central-1.amazonaws.com/windows-0126_x64.msi'; \
-      $out='C:\\\\Windows\\\\Temp\\\\cortexxdr.msi'; \
-      Invoke-WebRequest -Uri $url -OutFile $out; \
-      Start-Process msiexec.exe -ArgumentList '/i', $out, '/qn', '/l*v', 'C:\\\\Windows\\\\Temp\\\\cortexxdr-install.log' -Wait; \
-    \""
+    commandToExecute = <<-POWERSHELL
+      powershell -ExecutionPolicy Bypass -NoProfile -Command "
+        $ErrorActionPreference = 'Stop';
+        $url  = 'https://xdr-agents-tests.s3.eu-central-1.amazonaws.com/windows-0126_x64.msi';
+        $out  = 'C:\\Windows\\Temp\\cortexxdr.msi';
+        $log  = 'C:\\Windows\\Temp\\cortexxdr-install.log';
+
+        Write-Host '[*] Downloading Cortex XDR MSI...';
+        Invoke-WebRequest -Uri $url -OutFile $out;
+
+        Write-Host '[*] Installing...';
+        Start-Process msiexec.exe -ArgumentList @('/i', $out, '/qn', '/l*v', $log) -Wait;
+
+        Write-Host '[*] Done';
+      "
+    POWERSHELL
   })
 }
 
