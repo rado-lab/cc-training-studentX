@@ -1,6 +1,9 @@
 resource "azurerm_resource_group" "rg" {
   name     = var.resource_group_name
   location = var.location
+  tags = {
+    yor_trace = "35a28c78-d63f-4208-9d0f-3bdc5bd17bfe"
+  }
 }
 
 resource "azurerm_virtual_network" "vnet" {
@@ -8,6 +11,9 @@ resource "azurerm_virtual_network" "vnet" {
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   address_space       = ["10.10.0.0/16"]
+  tags = {
+    yor_trace = "c89d1b67-35a0-4a7d-af68-fd23c2674c15"
+  }
 }
 
 resource "azurerm_subnet" "subnet" {
@@ -33,6 +39,9 @@ resource "azurerm_network_security_group" "nsg_ubuntu" {
     destination_port_range     = "22"
     source_address_prefix      = var.ssh_source_cidr
     destination_address_prefix = "*"
+  }
+  tags = {
+    yor_trace = "7622fc15-0512-4123-88e1-24d9fc0b684c"
   }
 }
 
@@ -94,6 +103,9 @@ resource "azurerm_virtual_machine_extension" "cortex_linux" {
       '
     BASH
   })
+  tags = {
+    yor_trace = "cd289de4-eeea-4728-b056-190fb46ff381"
+  }
 }
 
 
@@ -115,6 +127,9 @@ resource "azurerm_network_security_group" "nsg_windows" {
     source_address_prefix      = "10.10.1.0/24"
     destination_address_prefix = "*"
   }
+  tags = {
+    yor_trace = "84099b8a-5de6-4195-a601-3dda84f1141d"
+  }
 }
 
 # ---------- Public IP Ubuntu ----------
@@ -124,6 +139,9 @@ resource "azurerm_public_ip" "pip_ubuntu" {
   resource_group_name = azurerm_resource_group.rg.name
   allocation_method   = "Static"
   sku                 = "Standard"
+  tags = {
+    yor_trace = "2a9b067c-0897-4d52-ad0a-f299346417d4"
+  }
 }
 
 # ---------- NIC Ubuntu ----------
@@ -137,6 +155,9 @@ resource "azurerm_network_interface" "nic_ubuntu" {
     subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.pip_ubuntu.id
+  }
+  tags = {
+    yor_trace = "75fbfa58-822a-459c-80c1-2d7f8cfff6d8"
   }
 }
 
@@ -174,6 +195,9 @@ resource "azurerm_linux_virtual_machine" "vm_ubuntu" {
     sku       = "22_04-lts-gen2"
     version   = "latest"
   }
+  tags = {
+    yor_trace = "7c3c867d-d6fe-4a99-a25b-842d8c60cc60"
+  }
 }
 
 #----instalacja agenta XDR 
@@ -204,6 +228,9 @@ resource "azurerm_virtual_machine_extension" "cortex_windows" {
       "
     POWERSHELL
   })
+  tags = {
+    yor_trace = "2e0b12f2-07b4-4211-8c97-731e63b878af"
+  }
 }
 
 
@@ -218,6 +245,9 @@ resource "azurerm_network_interface" "nic_windows" {
     name                          = "ipconfig1"
     subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
+  }
+  tags = {
+    yor_trace = "0eff6a56-36b5-4c3e-b6fb-3bf4651270ff"
   }
 }
 
@@ -249,5 +279,8 @@ resource "azurerm_windows_virtual_machine" "vm_windows" {
     offer     = "WindowsServer"
     sku       = "2022-Datacenter"
     version   = "latest"
+  }
+  tags = {
+    yor_trace = "2c018fe3-4b22-4fd0-9bf6-46140df5ef88"
   }
 }
