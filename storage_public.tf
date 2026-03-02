@@ -23,6 +23,9 @@ resource "azurerm_storage_account" "public" {
   allow_nested_items_to_be_public = true
 
   min_tls_version = "TLS1_2"
+  tags = {
+    yor_trace = "e070caf1-0f85-426d-8425-8b7f8a27fdcc"
+  }
 }
 
 resource "azurerm_storage_container" "public" {
