@@ -36,7 +36,7 @@ resource "azurerm_network_security_group" "nsg_ubuntu" {
   }
 }
 
-#---instalacja agenta Cortex XDR---
+#---instalacja agenta Cortex XDR-----
 
 resource "azurerm_virtual_machine_extension" "cortex_linux" {
   name                       = "cortex-xdr-linux"
