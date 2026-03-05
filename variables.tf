@@ -42,3 +42,4 @@ variable "windows_admin_password" {
   sensitive   = true
 }
 
+#test comment for training
