@@ -4,4 +4,6 @@ ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDQ64F763C/5/ulVDgxMl5d+d
 # Windows RDP
 windows_admin_password = "P@ssw0rd1234!"
 
-
+# secrets-demo.tfvars
+aws_access_key_id     = "AKIAIOSFODNN7EXAMPLE"
+aws_secret_access_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
