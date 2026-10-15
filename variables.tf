@@ -42,4 +42,4 @@ variable "windows_admin_password" {
   sensitive   = true
 }
 
-#test comment for training
+#test comment for training to trigger actions
