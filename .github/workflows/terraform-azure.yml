@@ -1,62 +1,124 @@
+# =============================================================================
+# GitHub Actions workflow: Cortex Cloud CI scan (+ Terraform deployment)
+#
+# This file defines an automated pipeline. GitHub runs it on the events listed
+# in the "on:" section. In this training, only the Cortex Cloud code scan runs;
+# the Terraform deployment job is disabled.
+# =============================================================================
+
+# Workflow name, shown on the repository's Actions tab.
 name: Terraform Azure
 
+# -----------------------------------------------------------------------------
+# TRIGGERS - when the workflow runs
+# -----------------------------------------------------------------------------
 on:
+  # Runs when a pull request targeting "main" is opened or reopened,
+  # and on every new commit pushed to that pull request's branch.
   pull_request:
     branches: [ "main" ]
+  # Runs on every push (commit or merged pull request) to "main".
   push:
     branches: [ "main" ]
+  # Allows a manual run from the Actions tab (Run workflow).
+  # The apply/destroy choice is used only by the Terraform job (disabled).
   workflow_dispatch:
     inputs:
       action:
-        description: "apply albo destroy"
+        description: "apply or destroy"
         required: true
         default: "apply"
         type: choice
         options:
           - apply
           - destroy
-#--
+
+# -----------------------------------------------------------------------------
+# CONCURRENCY - only one run per branch at a time
+# A new commit to the same branch cancels a run that is still in progress.
+# -----------------------------------------------------------------------------
 concurrency:
   group: terraform-azure-${{ github.ref }}
   cancel-in-progress: true
-#--
 
+# -----------------------------------------------------------------------------
+# PERMISSIONS for the GitHub token used by the workflow
+# - id-token: write - needed by the Terraform job to log in to Azure with OIDC
+#   (short-lived tokens instead of stored passwords)
+# - contents: read  - allows the workflow to check out the repository code
+# -----------------------------------------------------------------------------
 permissions:
   id-token: write
   contents: read
 
+# -----------------------------------------------------------------------------
+# GLOBAL ENVIRONMENT VARIABLES - available to all jobs
+# The API key and key ID are read from the repository secrets
+# (Settings > Secrets and variables > Actions), so they never appear in code.
+# CORTEX_API_URL is the API address of the Cortex Cloud tenant
+# ("api-" + tenant FQDN).
+# -----------------------------------------------------------------------------
 env:
-  CORTEX_API_KEY: ${{secrets.CORTEX_API_KEY}}
-  CORTEX_API_KEY_ID: ${{secrets.CORTEX_API_KEY_ID}}
+  CORTEX_API_KEY: ${{ secrets.CORTEX_API_KEY }}
+  CORTEX_API_KEY_ID: ${{ secrets.CORTEX_API_KEY_ID }}
   CORTEX_API_URL: https://api-xsiam-clico.xdr.pl.paloaltonetworks.com
-  
+
 jobs:
+
+  # ===========================================================================
+  # JOB 1: Cortex Cloud code scan
+  # Scans the repository (IaC, secrets, dependencies) and sends the results
+  # to Cortex Cloud, where they appear as AppSec findings and issues.
+  # ===========================================================================
   cortex-code-scan:
+    # Each job runs on a fresh, temporary virtual machine provided by GitHub.
     runs-on: ubuntu-latest
 
     steps:
+    # Downloads the repository code to the runner so it can be scanned.
     - name: Checkout Repository
-      uses: actions/checkout@v2
-    
+      uses: actions/checkout@v4
+
+    # Installs Node.js 22, as defined in the Cortex Cloud wizard template.
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: 22
 
+    # Prints the installed Node.js version (diagnostic step).
     - name: Verify Node.js Version
       run: node -v
 
+    # Downloads the Cortex CLI (cortexcli):
+    # 1. Calls the Cortex Cloud API, authenticated with the API key and key ID,
+    #    to get a temporary (signed) download link for Linux amd64.
+    # 2. Extracts the link from the JSON response with jq.
+    # 3. Downloads the binary, makes it executable and prints its version.
+    # The script stops with a clear error if the API call fails
+    # (for example, a wrong API URL, key or key ID).
     - name: Download cortexcli
       run: |
-        set -x
-        crtx_resp=$(curl "${CORTEX_API_URL}/public_api/v1/unified-cli/releases/download-link?os=linux&architecture=amd64" \
+        set -euo pipefail
+        crtx_resp=$(curl -fsS "${CORTEX_API_URL}/public_api/v1/unified-cli/releases/download-link?os=linux&architecture=amd64" \
           -H "x-xdr-auth-id: ${CORTEX_API_KEY_ID}" \
           -H "Authorization: ${CORTEX_API_KEY}")
-        crtx_url=$(echo $crtx_resp | jq -r ".signed_url")
-        curl -o cortexcli $crtx_url
+        crtx_url=$(echo "$crtx_resp" | jq -r ".signed_url")
+        if [ -z "$crtx_url" ] || [ "$crtx_url" = "null" ]; then
+          echo "ERROR: no signed_url in API response - check API URL, key and key ID"
+          exit 1
+        fi
+        curl -fsS -o cortexcli "$crtx_url"
         chmod +x cortexcli
         ./cortexcli --version
 
+    # Runs the scan and reports the results to Cortex Cloud.
+    # The repository metadata (ID, branch, URL) lets Cortex Cloud link
+    # each finding to the correct repository and branch.
+    #   --directory  - the folder to scan (the checked-out repository)
+    #   --repo-id    - repository name in owner/repo format
+    #   --branch     - the branch being scanned
+    #   --source     - identifies the CI system that ran the scan
+    #   --repo-url   - the repository URL on GitHub
     - name: Run Cortex CLI Code Scan
       run: |
         ./cortexcli \
@@ -64,17 +126,29 @@ jobs:
           --api-key "${CORTEX_API_KEY}" \
           --api-key-id "${CORTEX_API_KEY_ID}" \
           code scan \
-          --directory "${{github.workspace}}" \
-          --repo-id "${{github.repository}}" \
-          --branch "${{github.ref_name}}" \
+          --directory "${{ github.workspace }}" \
+          --repo-id "${{ github.repository }}" \
+          --branch "${{ github.ref_name }}" \
           --source "GITHUB_ACTIONS" \
-          --repo-url "${{github.server_url}}/${{github.repository}}"
+          --repo-url "${{ github.server_url }}/${{ github.repository }}"
 
+  # ===========================================================================
+  # JOB 2: Terraform deployment to Azure - DISABLED FOR TRAINING
+  # "if: false" skips this job; it appears as "skipped" on the Actions tab.
+  # When enabled, it deploys the infrastructure defined in the Terraform files.
+  # ===========================================================================
   terraform:
+    # Disabled for training - only the Cortex Cloud scan runs.
+    # To re-enable, remove the line below.
+    if: false
+    # Runs only after the Cortex scan job completes successfully.
     needs: cortex-code-scan
     runs-on: ubuntu-latest
+    # GitHub environment that holds the deployment secrets and protection rules.
     environment: test-env
 
+    # Azure connection details for Terraform (read from repository secrets).
+    # ARM_USE_OIDC enables passwordless login with a short-lived OIDC token.
     env:
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -83,11 +157,15 @@ jobs:
       TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
 
     steps:
+      # Checks out the code with full Git history (needed by Yor for git tags).
       - name: Checkout
         uses: actions/checkout@v4
         with:
            fetch-depth: 0
-#---
+
+      # Passes Git metadata (repository, branch, commit) to Terraform as
+      # variables, so deployed resources can be tagged with their code origin
+      # (code-to-cloud traceability).
       - name: Set TF provenance vars (Code-to-Cloud)
         run: |
           echo "TF_VAR_git_repo=${GITHUB_REPOSITORY}" >> $GITHUB_ENV
@@ -95,18 +173,21 @@ jobs:
           echo "TF_VAR_git_commit=${GITHUB_SHA}" >> $GITHUB_ENV
           echo "TF_VAR_environment=test-env" >> $GITHUB_ENV
 
+      # Adds Yor traceability tags to the Terraform resources on the runner only
+      # (changes are not committed back to the repository).
       - name: Add Yor tags to Terraform (auto, no commits)
         uses: bridgecrewio/yor-action@main
         with:
           directory: .
           commit_changes: "false"
-#----
 
+      # Installs a specific Terraform version.
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.6.6
 
+      # Logs in to Azure with OIDC (no stored password).
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
@@ -114,30 +195,37 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      # Initializes Terraform: downloads providers and configures the backend.
       - name: Terraform Init
         run: terraform init -input=false
         working-directory: .
 
+      # Checks code formatting. Skipped for destroy, so a formatting error
+      # does not block removing the infrastructure.
       - name: Terraform Format
-        # żeby destroy nie blokował się na fmt, jeśli ktoś popsuje format
         if: github.event_name != 'workflow_dispatch' || inputs.action != 'destroy'
         run: terraform fmt -check -recursive
         working-directory: .
 
+      # Validates the syntax and internal consistency of the configuration.
       - name: Terraform Validate
         run: terraform validate
         working-directory: .
 
+      # Creates an execution plan (what will be created, changed or removed).
       - name: Terraform Plan (apply)
         if: github.event_name != 'workflow_dispatch' || inputs.action == 'apply'
         run: terraform plan -out tfplan
         working-directory: .
 
+      # Applies the plan. Runs only on a push to main or a manual "apply" run,
+      # so pull requests are planned but never deployed.
       - name: Terraform Apply
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
         run: terraform apply -auto-approve tfplan
         working-directory: .
 
+      # Removes all deployed resources. Runs only on a manual "destroy" run.
       - name: Terraform Destroy
         if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
         run: terraform destroy -auto-approve
