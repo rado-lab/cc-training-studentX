@@ -26,8 +26,7 @@ permissions:
   contents: read
 
 env:
-  CORTEX_API_URL: https://api-clico-cortex-cloud.xdr.pl.paloaltonetworks.com
-
+  CORTEX_API_URL: https://api-xsiam-clico.xdr.pl.paloaltonetworks.com
 jobs:
   cortex-code-scan:
     runs-on: ubuntu-latest
