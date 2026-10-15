@@ -43,3 +43,4 @@ variable "windows_admin_password" {
 }
 
 #test comment for training to trigger actions
+#
